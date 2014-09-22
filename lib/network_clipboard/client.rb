@@ -25,22 +25,29 @@ module NetworkClipboard
         begin
           new_value = @connection.receive()
         rescue DisconnectedError
-          @running = false
+          if @running
+            LOGGER.error("Client #{@connection.remote_client_id} went away")
+            @running = false
+          end
           break
         end
         next if @value == new_value
+        LOGGER.info("Received new clipboard value from #{@connection.remote_client_id}")
         Clipboard.copy(@value = new_value)
       end
       @connection.close_read
+      LOGGER.debug("Read loop completed")
     end
 
     def write_loop
       while @running
         new_value = Clipboard.paste
         (sleep(2); next) if new_value.nil? or new_value.empty? or @value == new_value
+        LOGGER.info("Sending clipboard value to #{@connection.remote_client_id}")
         @connection.send(@value = new_value)
       end
       @connection.close_write
+      LOGGER.debug("Write loop completed")
     end
     
     def join
@@ -88,14 +95,18 @@ module NetworkClipboard
 
     def announce_loop
       while @running
+        LOGGER.debug("Announcing")
         @discovery.announce
+        LOGGER.debug("Announced")
         sleep(15)
       end
     end
 
     def discover_loop
       while @running
+        LOGGER.debug("Discovering")
         remote_client_id,address = @discovery.get_peer_announcement
+        LOGGER.debug("Found #{remote_client_id} on #{address}")
 
         @connections_mutex.synchronize do
           next if @connections[remote_client_id]
@@ -125,9 +136,11 @@ module NetworkClipboard
         incoming = @tcp_server.accept
         aes_connection = AESConnection.new(@config,incoming)
 
+        LOGGER.debug("Incoming #{aes_connection.remote_client_id} from #{incoming.peeraddr(false)[-1]}")
 
         @connections_mutex.synchronize do
           if @connections[aes_connection.remote_client_id]
+            LOGGER.info("Connection already established to #{aes_connection.remote_client_id}, dropping.")
             aes_connection.close
             next
           end
