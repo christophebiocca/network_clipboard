@@ -16,4 +16,6 @@ DESC
   s.homepage    = 'http://github.com/christophebiocca/network_clipboard'
   s.license     = 'Apache-2.0'
   s.add_runtime_dependency 'clipboard', '~> 1.0'
+  s.cert_chain  = ['certs/christophebiocca.pem']
+  s.signing_key = File.expand_path("~/keys/gem-private_key.pem")
 end
