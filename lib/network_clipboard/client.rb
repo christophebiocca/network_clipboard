@@ -6,6 +6,7 @@ module NetworkClipboard
   class Client
     def initialize
       @config = Config.new
+      @discovery = Discovery.new(@config)
     end
   end
 end
