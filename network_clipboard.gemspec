@@ -3,7 +3,11 @@ Gem::Specification.new do |s|
   s.version     = '0.0.0'
   s.date        = '2014-05-21'
   s.summary     = "Network Clipboard Sharing"
-  s.description = File.read(File.join(File.dirname(__FILE__),'README.md'))
+  s.description = <<-DESC
+Allows sharing of clipboard between multiple machines on the same network.
+Encrypted using AES-128-CBC, relies on pre-shared secret file.
+Internal API not stable yet. Only use the executable.
+DESC
   s.authors     = ["Christophe Biocca"]
   s.email       = 'christophe.biocca@gmail.com'
   s.files       = Dir.glob('bin/*') + Dir.glob('lib/**/*.rb')
