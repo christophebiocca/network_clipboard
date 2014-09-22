@@ -1,10 +1,12 @@
+require_relative 'error'
+
 require 'socket'
 require 'openssl'
 
 module NetworkClipboard
   HANDSHAKE_STRING = "NetworkClipboard Handshake"
 
-  class HandshakeException < Exception
+  class HandshakeException < NetworkClipboardError
   end
 
   class AESConnection
