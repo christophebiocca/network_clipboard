@@ -11,15 +11,24 @@ module NetworkClipboard
     LOGGER = Logger.new(STDOUT)
     LOGGER.level = Logger::WARN
 
+    attr_writer :running
+
+    def self.run
+      c = Client.new
+      Signal.trap('INT'){c.running = false}
+      c.loop
+    end
+
     def initialize
       @config = Config.new
       @discovery = Discovery.new(@config)
       @tcp_server = TCPServer.new(@config.port)
       @connections = {}
+      @running = true
     end
 
     def loop
-      while true
+      while @running
         [:announce,
          :discover,
          :watch_incoming,
@@ -27,7 +36,7 @@ module NetworkClipboard
          :find_incoming,
          :wait,
         ].each do |action|
-          send(action)
+          send(action) if @running
         end
       end
     end
