@@ -4,9 +4,13 @@ require_relative 'connection'
 
 require 'clipboard'
 require 'socket'
+require 'logger'
 
 module NetworkClipboard
   class Client
+    LOGGER = Logger.new(STDOUT)
+    LOGGER.level = Logger::WARN
+
     def initialize
       @config = Config.new
       @discovery = Discovery.new(@config)
@@ -59,15 +63,18 @@ module NetworkClipboard
     def discover
       @discovery.get_peer_announcements do |remote_client_id,address|
         next if @connections[remote_client_id] or remote_client_id < @config.client_id
+        LOGGER.info("New Peer -> #{remote_client_id}")
 
         aes_connection = AESConnection.new(@config,TCPSocket.new(address,@config.port))
 
         if aes_connection.remote_client_id != remote_client_id
+          LOGGER.error("Client Id #{aes_connection.remote_client_id} doesn't match original value #{remote_client_id}")
           aes_connection.close
           next
         end
           
         if @connections[aes_connection.remote_client_id]
+          LOGGER.error("Duplicate connections #{aes_connection} and #{@connections[aes_connection.remote_client_id]}")
           aes_connection.close
           next
         end
@@ -84,6 +91,7 @@ module NetworkClipboard
           return
         end
         aes_connection = AESConnection.new(@config,incoming)
+        LOGGER.info("New Peer <- #{aes_connection.remote_client_id}")
 
         if @connections[aes_connection.remote_client_id]
           aes_connection.close
