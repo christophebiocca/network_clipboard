@@ -4,5 +4,8 @@ require_relative 'connection'
 
 module NetworkClipboard
   class Client
+    def initialize
+      @config = Config.new
+    end
   end
 end
