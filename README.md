@@ -50,3 +50,4 @@ TODO
 - Allow temporary connections.
 - Get someone else to look at the crypto bits and make sure they work.
 - Use a garden variety service discovery (DNSSD?), if I can find bindings that work cross platform.
+- Mobile App? Maybe?
