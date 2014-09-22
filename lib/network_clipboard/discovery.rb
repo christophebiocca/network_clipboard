@@ -4,6 +4,8 @@ require 'digest'
 
 module NetworkClipboard
   class Discovery
+    attr_reader :receive_socket
+
     def initialize(config)
       @config = config
 
