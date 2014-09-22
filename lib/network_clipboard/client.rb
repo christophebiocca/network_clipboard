@@ -19,12 +19,28 @@ module NetworkClipboard
         [:announce,
          :discover,
          :watch_incoming,
+         :fetch_clipboard,
          :find_incoming,
          :wait,
         ].each do |action|
           send(action)
         end
       end
+    end
+
+    def fetch_clipboard
+      update_clipboard(Clipboard.paste)
+    end
+
+    def update_clipboard(new_value)
+      @new_value,@last_value = new_value,@new_value
+      if @new_value != @last_value
+        @connections.values.each{|c| send_new_clipboard(c)}
+      end
+    end
+
+    def send_new_clipboard(connection)
+      connection.send(@new_value)
     end
 
     def watch_incoming
