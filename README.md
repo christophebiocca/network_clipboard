@@ -5,6 +5,18 @@ Synchronizes the clipboard of multiple machines on a network.
 Uses AES-128-CBC with a pre-shared secret to protect your clipboard from the NSA (NSA-proofness not guaranteed).
 The internal API is __not stable__. Please don't rely on it.
 
+Install
+-------
+
+`gem install network_clipboard`
+
+or if you want to be really safe
+
+1. `gem cert --add <(curl -Ls https://raw.github.com/christophebiocca/network_clipboard/master/certs/christophebiocca.pem)`
+2. `gem install network_clipboard -P MediumSecurity`
+
+Which will protect you if rubygems hosting is tampered with.
+
 Setup
 -----
 
