@@ -9,7 +9,7 @@ module NetworkClipboard
 
   class AESConnection
 
-    attr_reader :remote_client_id
+    attr_reader :remote_client_id, :socket
 
     def initialize(config,socket)
       @socket = socket
