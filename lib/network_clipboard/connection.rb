@@ -9,6 +9,9 @@ module NetworkClipboard
   class HandshakeException < NetworkClipboardError
   end
 
+  class DisconnectedError < NetworkClipboardError
+  end
+
   class AESConnection
 
     attr_reader :remote_client_id, :socket
@@ -31,8 +34,8 @@ module NetworkClipboard
       iv = @encryptor.random_iv
       @socket.send([iv.size].pack('N'),0)
       @socket.send(iv,0)
-      iv_size = @socket.recv(4).unpack('N')[0]
-      @decryptor.iv = @socket.recv(iv_size)
+      iv_size = @socket.read(4).unpack('N')[0]
+      @decryptor.iv = @socket.read(iv_size)
 
       # Verify it all worked.
       send(HANDSHAKE_STRING)
@@ -49,34 +52,25 @@ module NetworkClipboard
       @encryptor.reset
     end
 
-    def receive(blocking=true)
-      begin
-        @partial_read ||= ''
-        while @partial_read.size < 4
-          @partial_read += @socket.recv_nonblock(4 - @partial_read.size)
-        end
-        while @partial_read.size < (total_size = 4 + @partial_read.unpack('N')[0])
-          @partial_read += @socket.recv_nonblock(total_size - @partial_read.size)
-        end
-      rescue IO::WaitReadable
-        if blocking
-          IO.select([@socket])
-          retry
-        else
-          return nil
-        end
+    def receive()
+      size_bits = @socket.read(4)
+      if size_bits.nil? and @socket.eof?
+        raise DisconnectedError
       end
-
-      ciphertext,@partial_read = @partial_read.slice(4,@partial_read.size-4),nil
-
+      ciphertext_size = size_bits.unpack('N')[0]
+      ciphertext = @socket.read(ciphertext_size)
       plaintext = @decryptor.update(ciphertext) + @decryptor.final
       @decryptor.reset
 
       return plaintext
     end
 
-    def close
-      @socket.close
+    def close_read
+      @socket.close_read
+    end
+
+    def close_write
+      @socket.close_write
     end
   end
 end

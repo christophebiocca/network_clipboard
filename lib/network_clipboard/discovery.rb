@@ -39,24 +39,21 @@ module NetworkClipboard
       @send_socket.send(@authenticated_client_id,0)
     end
 
-    def get_peer_announcements
-      return enum_for(__method__) if !block_given?
-      begin
-        while true
-          msg,ip = @receive_socket.recvfrom_nonblock(65536)
-          other_client_id,other_digest = msg.unpack('H32A32')
+    def get_peer_announcement
+      while true
+        msg,ip = @receive_socket.recvfrom(65536)
+        other_client_id,other_digest = msg.unpack('H32A32')
 
-          next if other_client_id == @config.client_id
+        # Retry if we got our own announcement.
+        next if other_client_id == @config.client_id
 
-          # We could do a constant time string compare, but an attacker can
-          # just listen to announces and rebroadcast them as his own anyway.
-          # This is just to skip other honest clients with different secrets
-          # on the network, to avoid wasting time on a handshake.
-          next unless other_digest == Digest::HMAC.digest(@config.secret,other_client_id,Digest::SHA256)
+        # We could do a constant time string compare, but an attacker can
+        # just listen to announces and rebroadcast them as his own anyway.
+        # This is just to skip other honest clients with different secrets
+        # on the network, to avoid wasting time on a failed handshake.
+        next unless other_digest == Digest::HMAC.digest(@config.secret,other_client_id,Digest::SHA256)
 
-          yield [other_client_id,ip[2]]
-        end
-      rescue IO::WaitReadable
+        return [other_client_id,ip[2]]
       end
     end
   end

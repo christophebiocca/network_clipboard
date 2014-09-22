@@ -10,112 +10,152 @@ module NetworkClipboard
   LOGGER = Logger.new(STDOUT)
   LOGGER.level = Logger::WARN
 
+  class ConnectionWrapper
+    def initialize(client,connection)
+      @client = client
+      @connection = connection
+      @read_thread = Thread.new{read_loop}
+      @write_thread = Thread.new{write_loop}
+      @running = true
+      @value = nil
+    end
+
+    def read_loop
+      while @running
+        begin
+          new_value = @connection.receive()
+        rescue DisconnectedError
+          @running = false
+          break
+        end
+        next if @value == new_value
+        Clipboard.copy(@value = new_value)
+      end
+      @connection.close_read
+    end
+
+    def write_loop
+      while @running
+        new_value = Clipboard.paste
+        (sleep(2); next) if new_value.nil? or new_value.empty? or @value == new_value
+        @connection.send(@value = new_value)
+      end
+      @connection.close_write
+    end
+    
+    def join
+      @read_thread.join
+      @write_thread.join
+    end
+
+    def stop
+      @running = false
+    end
+  end
+
   class Client
-    attr_writer :running
 
     def self.run
       c = Client.new
-      Signal.trap('INT'){c.running = false}
+      Signal.trap('INT'){c.stop}
       c.loop
     end
 
     def initialize
       @config = Config.new
       @discovery = Discovery.new(@config)
+
       @tcp_server = TCPServer.new(@config.port)
+
       @connections = {}
+      @connections_mutex = Mutex.new
+
       @running = true
     end
 
     def loop
+      Thread.abort_on_exception = true
+      @announce_thread = Thread.new{announce_loop}
+      @discover_thread = Thread.new{discover_loop}
+      @incoming_loop = Thread.new{incoming_loop}
+
+      @announce_thread.join
+
+      @connections.values.each do |connection|
+        connection.join
+      end
+    end
+
+    def announce_loop
       while @running
-        [:announce,
-         :discover,
-         :watch_incoming,
-         :fetch_clipboard,
-         :find_incoming,
-         :wait,
-        ].each do |action|
-          send(action) if @running
+        @discovery.announce
+        sleep(15)
+      end
+    end
+
+    def discover_loop
+      while @running
+        remote_client_id,address = @discovery.get_peer_announcement
+
+        @connections_mutex.synchronize do
+          next if @connections[remote_client_id]
+
+          aes_connection = AESConnection.new(@config,TCPSocket.new(address,@config.port))
+
+          if aes_connection.remote_client_id != remote_client_id
+            LOGGER.error("Client Id #{aes_connection.remote_client_id} doesn't match original value #{remote_client_id}")
+            aes_connection.close
+            next
+          end
+            
+          if @connections[aes_connection.remote_client_id]
+            LOGGER.error("Duplicate connections #{aes_connection} and #{@connections[aes_connection.remote_client_id]}")
+            aes_connection.close
+            next
+          end
+
+          LOGGER.info("New Peer -> #{remote_client_id}")
+          @connections[aes_connection.remote_client_id] = ConnectionWrapper.new(self,aes_connection)
         end
       end
     end
 
-    def fetch_clipboard
-      update_clipboard(Clipboard.paste)
-    end
-
-    def update_clipboard(new_value)
-      @new_value,@last_value = new_value,@new_value
-      if @new_value != @last_value
-        @connections.values.each{|c| send_new_clipboard(c)}
-      end
-    end
-
-    def send_new_clipboard(connection)
-      connection.send(@new_value)
-    end
-
-    def watch_incoming
-      @connections.values.each{|c| receive_clipboard(c)}
-    end
-
-    def receive_clipboard(connection)
-      inbound = connection.receive(false)
-      Clipboard.copy(inbound) if inbound
-    end
-
-    def announce
-      @discovery.announce
-    end
-
-    def discover
-      @discovery.get_peer_announcements do |remote_client_id,address|
-        next if @connections[remote_client_id] or remote_client_id < @config.client_id
-        LOGGER.info("New Peer -> #{remote_client_id}")
-
-        aes_connection = AESConnection.new(@config,TCPSocket.new(address,@config.port))
-
-        if aes_connection.remote_client_id != remote_client_id
-          LOGGER.error("Client Id #{aes_connection.remote_client_id} doesn't match original value #{remote_client_id}")
-          aes_connection.close
-          next
-        end
-          
-        if @connections[aes_connection.remote_client_id]
-          LOGGER.error("Duplicate connections #{aes_connection} and #{@connections[aes_connection.remote_client_id]}")
-          aes_connection.close
-          next
-        end
-
-        @connections[aes_connection.remote_client_id] = aes_connection
-      end
-    end
-
-    def find_incoming
-      while true
-        begin
-          incoming = @tcp_server.accept_nonblock
-        rescue IO::WaitReadable
-          return
-        end
+    def incoming_loop
+      while @running
+        incoming = @tcp_server.accept
         aes_connection = AESConnection.new(@config,incoming)
-        LOGGER.info("New Peer <- #{aes_connection.remote_client_id}")
 
-        if @connections[aes_connection.remote_client_id]
-          aes_connection.close
-          next
+
+        @connections_mutex.synchronize do
+          if @connections[aes_connection.remote_client_id]
+            aes_connection.close
+            next
+          end
+
+          LOGGER.info("New Peer <- #{aes_connection.remote_client_id}")
+
+          @connections[aes_connection.remote_client_id] = ConnectionWrapper.new(self,aes_connection)
         end
-
-        @connections[aes_connection.remote_client_id] = aes_connection
       end
     end
 
-    def wait
-      return IO.select([
-        @discovery.receive_socket,
-        @tcp_server,
-      ] + @connections.values.collect(&:socket), [], [], 5)
+    def run_connection(connection)
+      begin
+        while @running
+          Clipboard.copy(connection.receive())
+        end
+      ensure
+        connection.close
+
+        @connections_mutex.synchronize do
+          @connections.delete(connection.remote_client_id)
+        end
+      end
+    end
+
+    def stop
+      @running = false
+      @connections.values.each(&:stop)
     end
   end
 end
