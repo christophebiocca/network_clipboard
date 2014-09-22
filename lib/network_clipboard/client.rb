@@ -7,10 +7,10 @@ require 'socket'
 require 'logger'
 
 module NetworkClipboard
-  class Client
-    LOGGER = Logger.new(STDOUT)
-    LOGGER.level = Logger::WARN
+  LOGGER = Logger.new(STDOUT)
+  LOGGER.level = Logger::WARN
 
+  class Client
     attr_writer :running
 
     def self.run
