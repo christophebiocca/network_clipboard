@@ -40,7 +40,6 @@ Should work on any ruby >= 1.9
 TODO
 ----
 
-- Go either full-blocking (with threads) or full-async, not the current godawful hybrid.
 - Figure out if there's a way not to write to the linux middle-mouse button clipboard.
 - Test on Windows.
 - Test on more complicated networks.
@@ -52,8 +51,7 @@ TODO
 - Use a garden variety service discovery (DNSSD?), if I can find bindings that work cross platform.
 - Mobile App? Maybe?
 
-Bugs
-----
+Known Bugs
+----------
 
-- Copying a file on OSX breaks things.
-- Once one side disconnects, the other kind of hangs forever.
+None right now, but please use github issues if you find any.
