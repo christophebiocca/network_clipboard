@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+require_relative 'logging'
 require_relative 'config'
 require_relative 'discovery'
 require_relative 'connection'
@@ -23,9 +24,6 @@ require 'socket'
 require 'logger'
 
 module NetworkClipboard
-  LOGGER = Logger.new(STDOUT)
-  LOGGER.level = Logger::WARN
-
   class ConnectionWrapper
     def initialize(client,connection)
       @client = client
