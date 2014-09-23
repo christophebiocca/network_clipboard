@@ -28,7 +28,7 @@ Setup
 Usage
 -----
 
-Once setup, all machines can join/leave the newtwork at will. The topology should adjust.
+Once setup, all machines can join/leave the network at will. The topology should adjust.
 
 Supported Platforms
 -------------------
