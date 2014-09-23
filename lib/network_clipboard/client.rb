@@ -16,6 +16,7 @@
 
 require_relative 'logging'
 require_relative 'config'
+require_relative 'authentication'
 require_relative 'discovery'
 require_relative 'connection'
 
@@ -84,7 +85,8 @@ module NetworkClipboard
 
     def initialize
       @config = Config.new
-      @discovery = Discovery.new(@config)
+      @authentication = SharedSecretAuthentication.new(@config)
+      @discovery = Discovery.new(@config,@authentication)
 
       @tcp_server = TCPServer.new(@config.port)
 

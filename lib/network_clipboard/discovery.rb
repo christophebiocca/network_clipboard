@@ -13,17 +13,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+require_relative 'authentication'
 
 require 'socket'
 require 'ipaddr'
-require 'digest'
 
 module NetworkClipboard
   class Discovery
     attr_reader :receive_socket
 
-    def initialize(config)
+    def initialize(config,authentication)
       @config = config
+      @authentication = authentication
 
       @receive_socket = UDPSocket.new()
       @receive_socket.setsockopt(:IPPROTO_IP, :IP_ADD_MEMBERSHIP, multicast_addr.hton + bind_addr.hton)
@@ -35,7 +36,7 @@ module NetworkClipboard
 
       @authenticated_client_id = [
         @config.client_id,
-        Digest::HMAC.digest(@config.secret,@config.client_id,Digest::SHA256),
+        @authentication.sign(@config.client_id),
       ].pack("H32A32")
     end
 
@@ -67,7 +68,7 @@ module NetworkClipboard
         # just listen to announces and rebroadcast them as his own anyway.
         # This is just to skip other honest clients with different secrets
         # on the network, to avoid wasting time on a failed handshake.
-        next unless other_digest == Digest::HMAC.digest(@config.secret,other_client_id,Digest::SHA256)
+        next unless @authentication.verify(other_client_id,other_digest)
 
         return [other_client_id,ip[2]]
       end
