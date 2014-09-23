@@ -15,6 +15,7 @@
 # limitations under the License.
 
 require_relative 'error'
+require_relative 'logging'
 
 require 'socket'
 require 'openssl'
@@ -63,6 +64,7 @@ module NetworkClipboard
 
     def send(new_content)
       ciphertext = @encryptor.update(new_content) + @encryptor.final
+      LOGGER.debug("Outgoing ciphertext: #{ciphertext.inspect}")
       @socket.send([ciphertext.size].pack('N'),0)
       @socket.send(ciphertext,0)
       @encryptor.reset
@@ -75,6 +77,7 @@ module NetworkClipboard
       end
       ciphertext_size = size_bits.unpack('N')[0]
       ciphertext = @socket.read(ciphertext_size)
+      LOGGER.debug("Incoming ciphertext: #{ciphertext.inspect}")
       plaintext = @decryptor.update(ciphertext) + @decryptor.final
       @decryptor.reset
 
