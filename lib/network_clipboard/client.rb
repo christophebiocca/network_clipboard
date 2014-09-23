@@ -42,7 +42,7 @@ module NetworkClipboard
           new_value = @connection.receive()
         rescue DisconnectedError
           if @running
-            LOGGER.error("Client #{@connection.remote_client_id} went away")
+            LOGGER.warn("Client #{@connection.remote_client_id} went away")
             @running = false
           end
           break
