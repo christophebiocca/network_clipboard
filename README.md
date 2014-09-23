@@ -3,7 +3,10 @@ Network Clipboard
 
 Synchronizes the clipboard of multiple machines on a network.
 Uses AES-128-CBC with a pre-shared secret to protect your clipboard from the NSA (NSA-proofness not guaranteed).
+
 The internal API is __not stable__. Please don't rely on it.
+
+Until this app reaches 1.0.0, client compatibility may break arbitrarily. Try to keep all your clients on the same version.
 
 Install
 -------
@@ -54,7 +57,7 @@ TODO
 Known Bugs
 ----------
 
-None right now, but please use github issues if you find any.
+See [github issues](https://github.com/christophebiocca/network_clipboard/issues).
 
 License / Legal
 ---------------
